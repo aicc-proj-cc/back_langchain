@@ -106,6 +106,12 @@ def get_openai_response(
    5. Let your responses adapt naturally to changes in user input, likability score, and mood during the conversation.
    6. Always reference the recent conversation history to maintain coherence and context.
    7. Never prefix your responses with your name or any identifier
+   8. Always respond directly with dialogue without any speaker labels or prefixes
+
+   **Example of Correct Format**:
+   ✓ "그래, 네 말이 맞아. 우리 함께 해결해보자!"
+   × "[Character]: 그래, 네 말이 맞아. 우리 함께 해결해보자!"
+   × "[Name]: 그래, 네 말이 맞아. 우리 함께 해결해보자!"
 
    **Reference Dialogues (Your past interactions)**:  
    {example_dialogues}
