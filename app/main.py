@@ -14,9 +14,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # 모든 도메인 허용
-    allow_credentials=True, # 자격 증명 허용 (쿠키 등)
-    allow_methods=["*"], # 모든 HTTP 메서드 허용 (GET, POST 등)
-    allow_headers=["*"], # 모든 HTTP 헤더 허용
+    allow_credentials=True,  # 자격 증명 허용 (쿠키 등)
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용 (GET, POST 등)
+    allow_headers=["*"],  # 모든 HTTP 헤더 허용
 )
 
 
@@ -42,6 +42,7 @@ class GenerateRequest(BaseModel):
     character_speech_style: Dict
     example_dialogues: List[Dict]
     chat_history: str
+
 
 @app.post("/generate/")
 def generate_response(request: GenerateRequest):
@@ -70,11 +71,11 @@ def generate_response(request: GenerateRequest):
         return {
             "text": bot_response.get("response", ""),
             "emotion": bot_response.get("emotion", "Neutral"),
-            "favorability": bot_response.get("updated_likes", request.favorability)
+            "favorability": bot_response.get("character_likes", request.favorability)
         }
 
     except Exception as e:
         print(f"Error in generate_response: {str(e)}")  # 디버깅용 로그
         raise HTTPException(status_code=500, detail=str(e))
 
-# uvicorn main:app --reload --log-level debug --port 8001 
+# uvicorn main:app --reload --log-level debug --port 8001

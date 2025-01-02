@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from chat_summary import ChatSummaryMemory
 from datetime import datetime
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
@@ -18,6 +19,9 @@ llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key)
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
+
+# 대화 이력 요약 기능
+conversation_memory = ChatSummaryMemory(max_history_length=5)
 
 # 사용자 호칭 설정 함수
 def get_user_title(favorability):
@@ -49,9 +53,9 @@ def predict_emotion(user_message):
 def analyze_message(user_message, dialogue_history, current_emotion):
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        dialogue_history.append({"message": user_message, "emotion": current_emotion, "timestamp": timestamp})
+        dialogue_history.add_message(user_message, current_emotion, timestamp)  # `dialogue_history`는 `ChatSummaryMemory` 객체
 
-        dialogue_history_json = json.dumps(list(dialogue_history), ensure_ascii=False, indent=4)
+        dialogue_history_json = dialogue_history.get_summary()  # 대화 이력 요약
 
         character_prompt_template = """
         Analyze the following user message and determine how it would affect the character's favorability score towards the user.
@@ -92,7 +96,7 @@ def adjust_favorability(user_message, favorability, dialogue_history, current_em
         logging.info(f"Adjusting favorability based on outcome: {outcome}")  # Outcome 확인 로그 추가
 
         # 최근 감정들을 확인
-        recent_emotions = [msg["emotion"] for msg in updated_dialogue_history[-5:]]
+        recent_emotions = [msg["emotion"] for msg in updated_dialogue_history.get_recent_messages()[-5:]]  # `get_recent_messages()`로 최근 메시지들 확인
         if len(recent_emotions) < 5:
             recent_emotions = ["Neutral"] * (5 - len(recent_emotions)) + recent_emotions
 
@@ -106,7 +110,7 @@ def adjust_favorability(user_message, favorability, dialogue_history, current_em
 
         if outcome == "Increase":
             favorability += 5
-            if len([msg for msg in updated_dialogue_history if "Increase" in msg["emotion"]]) >= 2:
+            if len([msg for msg in updated_dialogue_history.get_recent_messages() if "Increase" in msg["emotion"]]) >= 2:
                 favorability += 10
         elif outcome == "Decrease":
             favorability -= 5
@@ -159,11 +163,11 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
 
         predicted_emotion = predict_emotion(user_message)
         user_title = get_user_title(favorability)
-        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, chat_history, predicted_emotion)
+        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, conversation_memory, predicted_emotion)  # `conversation_memory`로 대체
 
         character_prompt = PromptTemplate(
             template=character_prompt_template,
-            input_variables=[
+            input_variables=[ 
                 "appearance", "personality", "background", "speech_style", "example_dialogues",
                 "character_name", "user_message", "favorability", "emotion", "user_title", "chat_history"
             ]
@@ -182,7 +186,7 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
             "favorability": new_favorability,
             "emotion": predicted_emotion,
             "user_title": user_title,
-            "chat_history": updated_dialogue_history
+            "chat_history": updated_dialogue_history.get_summary()  # 요약된 대화 이력을 전달
         })
 
         logging.info(f"OpenAI response: {response}")  # OpenAI 응답 로그 추가
@@ -190,13 +194,13 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
         if isinstance(response, dict) and 'text' in response:
             return {
                 "response": response['text'],
-                "updated_likes": new_favorability,
+                "character_likes": new_favorability,
                 "emotion": predicted_emotion
             }
 
         return {
             "response": "Sorry, something went wrong with generating a response.",
-            "updated_likes": new_favorability,
+            "character_likes": new_favorability,
             "emotion": "Neutral"
         }
 
