@@ -20,36 +20,55 @@ llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key)
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 
-# 대화 이력 요약 기능
-conversation_memory = ChatSummaryMemory(max_history_length=5)
+# 대화방마다 고유한 대화 이력 관리
+class ConversationManager:
+    def __init__(self):
+        self.conversations = {}
+
+    def get_conversation_memory(self, room_id):
+        if room_id not in self.conversations:
+            self.conversations[room_id] = ChatSummaryMemory(max_history_length=5)
+        return self.conversations[room_id]
+
+# ConversationManager 인스턴스 생성
+conversation_manager = ConversationManager()
 
 # 사용자 호칭 설정 함수
 def get_user_title(favorability):
-    if favorability < 30:
+    try:
+        if favorability < 30:
+            return "손님"
+        elif favorability < 70:
+            return "친구"
+        else:
+            return "소중한 친구"
+    except Exception as e:
+        logging.error(f"Error in get_user_title: {e}")
         return "손님"
-    elif favorability < 70:
-        return "친구"
-    else:
-        return "소중한 친구"
 
 # 감정 예측 함수
 def predict_emotion(user_message):
-    emotion_prompt_template = """
-    Analyze the user's message and predict the emotional response of the character.
-    Possible emotions are: Happy, Sad, Angry, Confused, Grateful, Embarrassed, or Nervous.
+    try:
+        emotion_prompt_template = """
+        Analyze the user's message and predict the emotional response of the character.
+        Possible emotions are: Happy, Sad, Angry, Confused, Grateful, Embarrassed, or Nervous.
 
-    User Message: {user_message}
+        User Message: {user_message}
 
-    Provide only the predicted emotion.
-    """
-    emotion_prompt = PromptTemplate(
-        template=emotion_prompt_template,
-        input_variables=["user_message"]
-    )
-    emotion_chain = LLMChain(llm=llm, prompt=emotion_prompt)
-    emotion = emotion_chain.invoke({"user_message": user_message})
-    return emotion.get("text", "normal").strip()
+        Provide only the predicted emotion.
+        """
+        emotion_prompt = PromptTemplate(
+            template=emotion_prompt_template,
+            input_variables=["user_message"]
+        )
+        emotion_chain = LLMChain(llm=llm, prompt=emotion_prompt)
+        emotion = emotion_chain.invoke({"user_message": user_message})
+        return emotion.get("text", "normal").strip()
+    except Exception as e:
+        logging.error(f"Error in predict_emotion: {e}")
+        return "neutral"
 
+# 대화방에 맞는 대화 이력 처리
 def analyze_message(user_message, dialogue_history, current_emotion):
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -90,8 +109,10 @@ def analyze_message(user_message, dialogue_history, current_emotion):
         logging.error(f"Error analyzing message: {e}")
         return "Neutral", dialogue_history
 
-def adjust_favorability(user_message, favorability, dialogue_history, current_emotion):
+def adjust_favorability(user_message, favorability, room_id, current_emotion):
     try:
+        # 대화 이력 가져오기
+        dialogue_history = conversation_manager.get_conversation_memory(room_id)
         outcome, updated_dialogue_history = analyze_message(user_message, dialogue_history, current_emotion)
         logging.info(f"Adjusting favorability based on outcome: {outcome}")  # Outcome 확인 로그 추가
 
@@ -122,10 +143,10 @@ def adjust_favorability(user_message, favorability, dialogue_history, current_em
         return favorability, updated_dialogue_history
 
     except Exception as e:
-        logging.error(f"favorability Adjustment Error: {e}")
+        logging.error(f"Favorability Adjustment Error: {e}")
         return favorability, dialogue_history
 
-def get_openai_response(user_message: str, character_name: str, favorability: int, appearance: dict, personality: dict, background: dict, speech_style: dict, example_dialogues: list, chat_history: str = "") -> dict:
+def get_openai_response(user_message: str, character_name: str, favorability: int, appearance: dict, personality: dict, background: dict, speech_style: dict, example_dialogues: list, room_id: str) -> dict:
     try:
         character_prompt_template = """
         You are a fictional character. Stay true to your character's traits and context while interacting with the user. Below is your character information:
@@ -152,9 +173,6 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
         **Reference Dialogues (Your past interactions)**:  
         {example_dialogues}
 
-        **Recent conversation history**:
-        {chat_history}
-
         **Current user input**:  
         {user_message}
 
@@ -163,13 +181,13 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
 
         predicted_emotion = predict_emotion(user_message)
         user_title = get_user_title(favorability)
-        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, conversation_memory, predicted_emotion)  # `conversation_memory`로 대체
+        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, room_id, predicted_emotion)  # `conversation_manager.get_conversation_memory(room_id)` 사용
 
         character_prompt = PromptTemplate(
             template=character_prompt_template,
             input_variables=[ 
                 "appearance", "personality", "background", "speech_style", "example_dialogues",
-                "character_name", "user_message", "favorability", "emotion", "user_title", "chat_history"
+                "character_name", "user_message", "favorability", "emotion", "user_title"
             ]
         )
 
@@ -185,8 +203,7 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
             "user_message": user_message,
             "favorability": new_favorability,
             "emotion": predicted_emotion,
-            "user_title": user_title,
-            "chat_history": updated_dialogue_history.get_summary()  # 요약된 대화 이력을 전달
+            "user_title": user_title
         })
 
         logging.info(f"OpenAI response: {response}")  # OpenAI 응답 로그 추가
