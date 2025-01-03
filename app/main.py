@@ -41,8 +41,6 @@ class GenerateRequest(BaseModel):
     character_background: Dict
     character_speech_style: Dict
     example_dialogues: List[Dict]
-    chat_history: str
-
 
 @app.post("/generate/")
 def generate_response(request: GenerateRequest):
@@ -51,6 +49,10 @@ def generate_response(request: GenerateRequest):
     """
     try:
         print("Received request data:", request.dict())  # 디버깅용 로그
+
+        # 고유한 room_id 생성
+        room_id = str(uuid.uuid4())
+        print(f"🔑 Generated room_id: {room_id}")
 
         # OpenAI API를 통해 캐릭터 응답 생성
         bot_response = get_openai_response(
@@ -62,7 +64,7 @@ def generate_response(request: GenerateRequest):
             background=request.character_background,
             speech_style=request.character_speech_style,
             example_dialogues=request.example_dialogues,
-            chat_history=request.chat_history
+            room_id=room_id  # 필수 매개변수 전달
         )
 
         print("OpenAI response:", bot_response)  # 디버깅용 로그
