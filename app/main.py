@@ -39,10 +39,10 @@ class GenerateRequest(BaseModel):
     user_message: str
     character_name: str
     favorability: int
-    character_appearance: Dict
-    character_personality: Dict
-    character_background: Dict
-    character_speech_style: Dict
+    character_appearance: str
+    character_personality: str
+    character_background: str
+    character_speech_style: str
     example_dialogues: List[Dict]
     chat_history: str
 
