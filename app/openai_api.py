@@ -36,15 +36,18 @@ conversation_manager = ConversationManager()
 # 사용자 호칭 설정 함수
 def get_user_title(favorability, nickname, user_unique_name):
     try:
+        # user_unique_name이 None이거나 빈 문자열이면 nickname을 기본값으로 사용
+        user_name = user_unique_name if user_unique_name else nickname
+
         if favorability < 30:
-            return "손님"
+            return f"{user_name}"
         elif favorability < 70:
-            return "친구"
+            return f"{user_name}"
         else:
-            return "소중한 친구"
+            return f"{user_name}"
     except Exception as e:
         logging.error(f"Error in get_user_title: {e}")
-        return "손님"
+        return f"{nickname}"
 
 # 감정 예측 함수
 def predict_emotion(user_message):
@@ -149,7 +152,7 @@ def adjust_favorability(user_message, favorability, room_id, current_emotion):
 def get_openai_response(
         user_message: str,
         character_name: str,
-        nickname: dict,
+        nickname: str,
         user_unique_name: str,
         user_introduction: str,
         favorability: int,
@@ -173,7 +176,11 @@ def get_openai_response(
         Your **current emotional state** is: {emotion}.  
         Your **favorability score** toward the user is: {favorability}.  
 
-        The user is referred to as: "{user_title}". 
+        The user is referred to as: "{user_title}".
+
+        **User Introduction**: {user_introduction}
+        The user has shared their self-description with you. Use this information to form more personalized responses, as it gives you insight into their character and how they wish to be treated. Consider their background, feelings, and any specific traits they mentioned.
+
 
         **Response Guidelines**:
         1. Always maintain your character's unique personality, speech style, and background in all interactions.
@@ -195,13 +202,13 @@ def get_openai_response(
 
         predicted_emotion = predict_emotion(user_message)
         user_title = get_user_title(favorability, nickname, user_unique_name)
-        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, room_id, predicted_emotion)  # `conversation_manager.get_conversation_memory(room_id)` 사용
+        new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, room_id, predicted_emotion)  
 
         character_prompt = PromptTemplate(
             template=character_prompt_template,
             input_variables=[ 
                 "appearance", "personality", "background", "speech_style", "example_dialogues",
-                "character_name", "user_message", "favorability", "emotion", "user_title"
+                "character_name", "user_message", "favorability", "emotion", "user_title","user_introduction"
             ]
         )
 
@@ -217,7 +224,8 @@ def get_openai_response(
             "user_message": user_message,
             "favorability": new_favorability,
             "emotion": predicted_emotion,
-            "user_title": user_title
+            "user_title": user_title,
+            "user_introduction": user_introduction
         })
 
         logging.info(f"OpenAI response: {response}")  # OpenAI 응답 로그 추가
