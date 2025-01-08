@@ -146,7 +146,21 @@ def adjust_favorability(user_message, favorability, room_id, current_emotion):
         logging.error(f"Favorability Adjustment Error: {e}")
         return favorability, dialogue_history
 
-def get_openai_response(user_message: str, character_name: str, favorability: int, appearance: str, personality: str, background: str, speech_style: str, example_dialogues: list, room_id: str) -> dict:
+def get_openai_response(
+        user_message: str,
+        character_name: str,
+        nickname: dict,
+        user_unique_name: str,
+        user_introduction: str,
+        favorability: int,
+        appearance: str,
+        personality: str,
+        background: str,
+        speech_style: str,
+        example_dialogues: list,
+        chat_history: str,
+        room_id: str
+    ) -> dict:
     try:
         character_prompt_template = """
         You are a fictional character. Stay true to your character's traits and context while interacting with the user. Below is your character information:
@@ -211,7 +225,7 @@ def get_openai_response(user_message: str, character_name: str, favorability: in
         if isinstance(response, dict) and 'text' in response:
             return {
                 "response": response['text'],
-                "character_likes": new_favorability,
+                "favorability": new_favorability,
                 "emotion": predicted_emotion
             }
 
