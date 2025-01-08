@@ -34,7 +34,7 @@ class ConversationManager:
 conversation_manager = ConversationManager()
 
 # 사용자 호칭 설정 함수
-def get_user_title(favorability):
+def get_user_title(favorability, nickname, user_unique_name):
     try:
         if favorability < 30:
             return "손님"
@@ -194,7 +194,7 @@ def get_openai_response(
         """
 
         predicted_emotion = predict_emotion(user_message)
-        user_title = get_user_title(favorability)
+        user_title = get_user_title(favorability, nickname, user_unique_name)
         new_favorability, updated_dialogue_history = adjust_favorability(user_message, favorability, room_id, predicted_emotion)  # `conversation_manager.get_conversation_memory(room_id)` 사용
 
         character_prompt = PromptTemplate(

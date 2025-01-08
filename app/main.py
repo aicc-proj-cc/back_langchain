@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal, ChatLog # DB 세션 가져오기
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 import asyncio
 import uuid
@@ -40,8 +40,8 @@ class GenerateRequest(BaseModel):
     user_message: str
     character_name: str
     nickname: dict
-    user_unique_name: str
-    user_introduction: str
+    user_unique_name: Optional[str]
+    user_introduction: Optional[str]
     favorability: int
     character_appearance: str
     character_personality: str
