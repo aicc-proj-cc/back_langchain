@@ -148,7 +148,7 @@ class Chat:
             if "text" in message:
                 await self.log_message(session_id, "chatbot", message["text"])
         except WebSocketDisconnect:
-            print(f"WebSocket disconnected for session {session_id}.")
+            print(f"WebSocket disconnected for session while sending message {session_id}.")
         except Exception as e:
             print(f"Error sending message for session {session_id}: {str(e)}")
 
@@ -215,8 +215,8 @@ async def websocket_generate(websocket: WebSocket, room_id: str):
             try:
                 data = await websocket.receive_json()
                 request = GenerateRequest(**data)
-            except WebSocketDisconnect:
-                print(f"WebSocket disconnected for session {session_id}.")
+            except WebSocketDisconnect as e:
+                print(f"WebSocket disconnected for session {session_id}. Reason: {e.code}")
                 break
             except Exception as e:
                 print(f"Error parsing request: {e}")
@@ -259,8 +259,10 @@ async def websocket_generate(websocket: WebSocket, room_id: str):
                 print(f"Error in websocket_generate: {str(e)}")
                 await chat.send_message(websocket, session_id, {"error": str(e)})
 
+    except WebSocketDisconnect as e:
+        print(f"WebSocket disconnected unexpectedly for session {session_id}. Reason: {e.code}")
     except Exception as e:
-        print(f"Unexpected error in WebSocket handling: {str(e)}")
+        print(f"Unexpected error in WebSocket handling for session {session_id}: {str(e)}")
     finally:
         chat.disconnect(session_id)
         print(f"Session {session_id} disconnected.")
