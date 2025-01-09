@@ -252,7 +252,7 @@ async def websocket_generate(websocket: WebSocket, room_id: str):
                 response = {
                     "text": bot_response.get("response", ""),
                     "emotion": bot_response.get("emotion", "Neutral"),
-                    "favorability": bot_response.get("character_likes", request.favorability)
+                    "favorability": bot_response.get("favorability", request.favorability)
                 }
                 await chat.send_message(websocket, session_id, response)
             except Exception as e:
