@@ -58,20 +58,19 @@ def get_user_title(favorability, nickname, user_unique_name):
 # 감정 분석 함수 (BERT 사용)
 def predict_emotion(user_message):
     try:
-        # BERT로 감정 분석
         inputs = tokenizer(user_message, return_tensors="pt", truncation=True, padding=True, max_length=512)
         outputs = emotion_model(**inputs)
-        predictions = torch.argmax(outputs.logits, dim=1).item()
+        predictions = torch.argmax(outputs.logits, dim=1).item() + 1  # 0-based index를 1-based로 변경
         
-        # 감정 예측: 감정 범위는 -2에서 +2까지 (예: -2: 부정, +2: 긍정)
-        if predictions == 0:
-            return "Negative"
-        elif predictions == 1:
-            return "Neutral"
-        elif predictions == 2:
-            return "Positive"
+        # 점수에 따른 감정 매핑
+        if predictions <= 2:
+            return "Negative"  
+        elif predictions == 3:
+            return "Neutral" 
+        elif predictions >= 4:
+            return "Positive" 
         else:
-            return "Neutral"
+            return "Neutral"   # 예외 처리
     except Exception as e:
         logging.error(f"Error in predict_emotion: {e}")
         return "Neutral"
