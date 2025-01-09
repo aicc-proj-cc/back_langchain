@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal, ChatLog # DB 세션 가져오기
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from datetime import datetime
 import asyncio
 import uuid
@@ -14,10 +14,12 @@ from openai_api import get_openai_response  # OpenAI API 호출 모듈
 
 app = FastAPI()
 
+CLIENT_DOMAIN = os.getenv("CLIENT_DOMAIN")
+
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # 모든 도메인 허용
+    allow_origins=[CLIENT_DOMAIN],  # 모든 도메인 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,7 +49,7 @@ class GenerateRequest(BaseModel):
     character_personality: str
     character_background: str
     character_speech_style: str
-    example_dialogues: List[Dict]
+    example_dialogues: List[Any]
     chat_history: str
 
 # 웹소켓 연결 관리
@@ -155,15 +157,16 @@ class Chat:
     # 자리비움 타이머 설정 및 일정 시간 초과시 세션 연결 해제
     async def inactivity_check(self, session_id: str):
         try:
-            await asyncio.sleep(600)  # 10분(600초) 대기
-            websocket, _ = self.active_connections.get(session_id, (None, None))
-            if websocket and websocket.application_state == WebSocketState.CONNECTED:
-                await websocket.send_json({
-                    "sender": "bot",
-                    "message": "10분 동안 활동이 없어 연결이 종료됩니다."
-                })
-                await websocket.close()
-            self.disconnect(session_id)
+            while True:
+                await asyncio.sleep(600)  # 10분(600초) 대기
+                websocket, _ = self.active_connections.get(session_id, (None, None))
+                if websocket and websocket.application_state == WebSocketState.CONNECTED:
+                    await websocket.send_json({
+                        "sender": "bot",
+                        "message": "10분 동안 활동이 없어 연결이 종료됩니다."
+                    })
+                    await websocket.close()
+                self.disconnect(session_id)
         except asyncio.CancelledError:
             # 타이머가 취소된 경우 무시
             pass
@@ -215,6 +218,10 @@ async def websocket_generate(websocket: WebSocket, room_id: str):
             try:
                 data = await websocket.receive_json()
                 request = GenerateRequest(**data)
+            except ValueError as e:
+                print(f"Invalid JSON format: {e}")
+                await websocket.close(code=1003, reason="Invalid JSON format")
+                return
             except WebSocketDisconnect as e:
                 print(f"WebSocket disconnected for session {session_id}. Reason: {e.code}")
                 break

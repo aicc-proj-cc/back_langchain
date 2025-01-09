@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, ARRAY, text
+from sqlalchemy import create_engine, UniqueConstraint, Column, String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, ARRAY, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -110,6 +110,10 @@ class ChatRoom(Base):
     favorability = Column(Integer, server_default=text("0"), nullable=False)
     user_unique_name = Column(String(50), nullable=True)
     user_introduction = Column(Text, nullable=True)
+    # 한 사용자가 같은 프롬프트 대상으로 채팅방 하나만 생성하게 유니크 제약조건 추가
+    __table_args__ = (
+        UniqueConstraint('user_idx', 'char_prompt_id', name='uq_user_char_prompt'), 
+    )
 
 # ImageMapping 테이블
 class ImageMapping(Base):
@@ -167,7 +171,7 @@ class SecretDiary(Base):
     __tablename__ = "secret_diary"
 
     diary_idx = Column(Integer, primary_key=True, autoincrement=True)
-    session = Column(String(50), ForeignKey("chat_logs.sesseion_id"), nullable=False)
+    session = Column(String(50), ForeignKey("chat_logs.session_id"), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
 
