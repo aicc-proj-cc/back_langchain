@@ -249,4 +249,4 @@ def get_openai_response(
             "error": str(e),
             "updated_likes": favorability,
             "emotion": "Neutral"
-        }
+        }   
