@@ -9,13 +9,19 @@ import openai
 import os
 from dotenv import load_dotenv
 import logging
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
 
 # 환경 변수 불러오기
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # LangChain을 위한 OpenAI LLM 인스턴스 생성
-llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key)
+llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key, temperature=0.7)
+
+# BERT 모델 로드 (감정 분석을 위한)
+tokenizer = BertTokenizer.from_pretrained('nlptown/bert-base-multilingual-uncased-sentiment')
+emotion_model = BertForSequenceClassification.from_pretrained('nlptown/bert-base-multilingual-uncased-sentiment')
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -49,27 +55,26 @@ def get_user_title(favorability, nickname, user_unique_name):
         logging.error(f"Error in get_user_title: {e}")
         return f"{nickname}"
 
-# 감정 예측 함수
+# 감정 분석 함수 (BERT 사용)
 def predict_emotion(user_message):
     try:
-        emotion_prompt_template = """
-        Analyze the user's message and predict the emotional response of the character.
-        Possible emotions are: Happy, Sad, Angry, Confused, Grateful, Embarrassed, or Nervous.
-
-        User Message: {user_message}
-
-        Provide only the predicted emotion.
-        """
-        emotion_prompt = PromptTemplate(
-            template=emotion_prompt_template,
-            input_variables=["user_message"]
-        )
-        emotion_chain = LLMChain(llm=llm, prompt=emotion_prompt)
-        emotion = emotion_chain.invoke({"user_message": user_message})
-        return emotion.get("text", "normal").strip()
+        # BERT로 감정 분석
+        inputs = tokenizer(user_message, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        outputs = emotion_model(**inputs)
+        predictions = torch.argmax(outputs.logits, dim=1).item()
+        
+        # 감정 예측: 감정 범위는 -2에서 +2까지 (예: -2: 부정, +2: 긍정)
+        if predictions == 0:
+            return "Negative"
+        elif predictions == 1:
+            return "Neutral"
+        elif predictions == 2:
+            return "Positive"
+        else:
+            return "Neutral"
     except Exception as e:
         logging.error(f"Error in predict_emotion: {e}")
-        return "neutral"
+        return "Neutral"
 
 # 대화방에 맞는 대화 이력 처리
 def analyze_message(user_message, dialogue_history, current_emotion):
@@ -112,6 +117,7 @@ def analyze_message(user_message, dialogue_history, current_emotion):
         logging.error(f"Error analyzing message: {e}")
         return "Neutral", dialogue_history
 
+# 호감도 조정 함수
 def adjust_favorability(user_message, favorability, room_id, current_emotion):
     try:
         # 대화 이력 가져오기
@@ -128,14 +134,13 @@ def adjust_favorability(user_message, favorability, room_id, current_emotion):
 
         logging.info(f"Recent emotions count: {emotion_counter}")  # 최근 감정 카운트 로그 추가
 
-        if emotion_counter[outcome] > 5:
-            logging.info(f"Favorability unchanged as the outcome emotion '{outcome}' is too frequent.")  # 감정이 자주 나타나면 호감도 조정 안함
+        # 감정 변화를 너무 자주 반영하지 않도록 체크
+        if emotion_counter[current_emotion] > 3:
+            logging.info(f"Favorability unchanged as the outcome emotion '{current_emotion}' is too frequent.")  # 감정이 자주 나타나면 호감도 조정 안함
             return favorability, updated_dialogue_history
 
         if outcome == "Increase":
             favorability += 5
-            if len([msg for msg in updated_dialogue_history.get_recent_messages() if "Increase" in msg["emotion"]]) >= 2:
-                favorability += 10
         elif outcome == "Decrease":
             favorability -= 5
         
@@ -176,11 +181,10 @@ def get_openai_response(
         Your **current emotional state** is: {emotion}.  
         Your **favorability score** toward the user is: {favorability}.  
 
-        The user is referred to as: "{user_title}".
+        The user is referred to as: "{user_title}". 
 
         **User Introduction**: {user_introduction}
         The user has shared their self-description with you. Use this information to form more personalized responses, as it gives you insight into their character and how they wish to be treated. Consider their background, feelings, and any specific traits they mentioned.
-
 
         **Response Guidelines**:
         1. Always maintain your character's unique personality, speech style, and background in all interactions.
