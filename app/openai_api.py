@@ -173,6 +173,9 @@ def get_openai_response(
         - **Speech Style**: {speech_style}
         - **Name**: {character_name}
 
+        Recent conversation history:
+        {chat_history}
+
         Your **current emotional state** is: {emotion}.  
         Your **favorability score** toward the user is: {favorability}.  
 
@@ -208,7 +211,7 @@ def get_openai_response(
             template=character_prompt_template,
             input_variables=[ 
                 "appearance", "personality", "background", "speech_style", "example_dialogues",
-                "character_name", "user_message", "favorability", "emotion", "user_title","user_introduction"
+                "character_name", "user_message", "favorability", "emotion", "user_title","user_introduction", "chat_history"
             ]
         )
 
@@ -225,7 +228,8 @@ def get_openai_response(
             "favorability": new_favorability,
             "emotion": predicted_emotion,
             "user_title": user_title,
-            "user_introduction": user_introduction
+            "user_introduction": user_introduction,
+            "chat_history": chat_history
         })
 
         logging.info(f"OpenAI response: {response}")  # OpenAI 응답 로그 추가
