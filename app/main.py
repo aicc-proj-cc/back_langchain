@@ -152,7 +152,7 @@ class Chat:
         # DB에서 이전 대화 기록 가져오기
         logs = db.query(ChatLog).filter(
             ChatLog.chat_id == room_id
-        ).order_by(ChatLog.end_time.desc()).limit(5).all()
+        ).order_by(ChatLog.end_time.desc()).limit(10).all()
         
         chat_history = ""
         # DB 저장된 이전 대화 기록
