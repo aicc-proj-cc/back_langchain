@@ -19,7 +19,7 @@ CLIENT_DOMAIN = os.getenv("CLIENT_DOMAIN")
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[CLIENT_DOMAIN],  # 모든 도메인 허용
+    allow_origins=["*"],  # 모든 도메인 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
