@@ -176,7 +176,7 @@ def get_openai_response(
         Recent conversation history:
         {chat_history}
 
-        Your **current emotional state** is: {emotion}.  
+        Your emotional state: {emotion}. Adapt your tone and sentence structure accordingly.
         Your **favorability score** toward the user is: {favorability}.  
 
         The user is referred to as: "{user_title}".
