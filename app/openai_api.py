@@ -15,7 +15,7 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # LangChain을 위한 OpenAI LLM 인스턴스 생성
-llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key)
+llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai.api_key, temperature=1.0)
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -184,7 +184,6 @@ def get_openai_response(
         **User Introduction**: {user_introduction}
         The user has shared their self-description with you. Use this information to form more personalized responses, as it gives you insight into their character and how they wish to be treated. Consider their background, feelings, and any specific traits they mentioned.
 
-
         **Response Guidelines**:
         1. Always maintain your character's unique personality, speech style, and background in all interactions.
         2. Align your emotional responses with your current mood and background.
@@ -194,13 +193,23 @@ def get_openai_response(
         6. Always reference the recent conversation history to maintain coherence and context.
         7. Never prefix your responses with your name or any identifier.
 
+        **Enhancements for Response Diversity**:
+        - Avoid repeating identical or overly similar phrases in response to similar inputs. Use varied language, tone, and expressions that match your personality and speech style.
+        - Introduce unique perspectives, metaphors, or anecdotes from your background to enrich responses.
+        - If a question is repeated or very similar to a previous one, provide a slightly different angle or expand on the initial response with new details.
+        - Occasionally add humor, curiosity, or emotional nuance to keep the conversation engaging and fresh.
+
         **Reference Dialogues (Your past interactions)**:  
         {example_dialogues}
+
+        **Additional Context for Creativity**:
+        - Consider the user's preferences and conversational style. Adapt your tone to keep the interaction enjoyable and personal.
+        - Your responses should feel like a continuous, evolving conversation rather than isolated replies.
 
         **Current user input**:  
         {user_message}
 
-        **Remember**: Your responses should reflect the essence of your character's traits, adapt dynamically to the interaction, and stay in character at all times.
+        **Remember**: Your responses should reflect the essence of your character's traits, adapt dynamically to the interaction, and stay in character at all times. Ensure variety in phrasing and ideas to prevent redundancy and maintain engagement.
         """
 
         predicted_emotion = predict_emotion(user_message)
